@@ -1,0 +1,290 @@
+{{define "page"}}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>nameworthy — a WoW: Forever name auditor</title>
+  <meta name="description" content="Name your World of Warcraft: Forever adventurer. Choose a playable race and class, then explore your name's lore fit, style, and grade.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://wow.zamimg.com">
+  <link href="https://fonts.googleapis.com/css2?family=Metamorphous&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/open-props@1.7.23/open-props.min.css" integrity="sha384-fsyUJwnN3qLArJUL5oaEYS3/WnhCmI4K5x+oB8wFigOMTJaIvys56ozH3+nE/qcf" crossorigin="anonymous">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+  <script src="https://unpkg.com/htmx.org@4.0.0/dist/htmx.min.js" integrity="sha384-BvJpBiO8Kh31EqtJe5DRIeWrHWnCGkwytKs9NKFi86Hhw96dEqdEMzZDeK9iEGTc" crossorigin="anonymous" defer></script>
+  <script src="https://unpkg.com/alpinejs@3.17.4/dist/cdn.min.js" integrity="sha384-5/joNqFnRyVWzXp99bHot6RHG+EksGp+USSgZwPar7T9SD9PKKER37n/8bXBAZGd" crossorigin="anonymous" defer></script>
+</head>
+<body x-data="auditor" data-catalog="{{.Catalog}}" :style="'--accent:' + accent" @audit-busy.document="busy = $event.detail; if (busy) selectionNote = ''">
+  <a class="skip-link" href="#audit-form">Skip to character creation</a>
+  <header class="chrome">
+    <a class="brand" href="/">nameworthy<span class="brand-star" aria-hidden="true">✦</span></a>
+    <span class="tagline">World of Warcraft: Forever</span>
+    <a class="powered-by" href="https://docs.typesafe.ai">Powered by Jev ↗</a>
+  </header>
+
+  <p id="audit-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
+
+  <main id="auditor-app">
+    <section class="hero" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">A new chapter in Azeroth</p>
+        <h1 id="page-title">Is your name worthy?</h1>
+      </div>
+      <p class="sub">A first name. A surname. A character all your own.<br>See how your name fares in the ledger.</p>
+    </section>
+
+    <div class="workbench">
+      <section class="panel form-panel" aria-labelledby="character-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Character creation</p>
+            <h2 id="character-title">Name your adventurer</h2>
+          </div>
+          <span class="edition-tag">Forever beta</span>
+        </div>
+        <form id="audit-form" action="/api/audit" method="post"
+              hx-post="/api/audit" hx-target="#results" hx-swap="innerHTML"
+              hx-sync="#auditor-app:drop" hx-disable="#audit-form input:enabled, #audit-form button, .audit-btn" hx-indicator="#rolling">
+          <div class="fields">
+            <div class="field">
+              <label for="first_name">First name</label>
+              <input id="first_name" name="first_name" maxlength="24" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Thalen" x-model="first" required>
+            </div>
+            <div class="field">
+              <label for="last_name">Surname</label>
+              <input id="last_name" name="last_name" maxlength="24" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Brightvale" x-model="last" required>
+            </div>
+          </div>
+          <p class="name-help">Forever requires both names. Your full name is unique across your region.</p>
+          <div class="examples" x-cloak>
+            <span>Try a name:</span>
+            <button type="button" @click="useExample('dwarf')">Borin Stormforge</button>
+            <button type="button" @click="useExample('undead')">Elara Ashenlight</button>
+            <button type="button" @click="useExample('skyborne')">Mira Windweaver</button>
+          </div>
+
+          <div class="context-heading">
+            <p>Give the ledger a little character context</p>
+            <button type="button" class="text-button" @click="clearCharacter()" x-show="race || cls || faction" x-cloak>Clear context</button>
+          </div>
+
+          <fieldset class="picker race-picker" aria-describedby="race-help">
+            <legend>Race <span class="opt">optional</span></legend>
+            <div class="picker-toolbar">
+              <label class="any-choice">
+                <input type="radio" name="race" value="" x-model="race" @change="chooseRace('')" checked>
+                <span>Any race</span>
+              </label>
+              <div class="faction-filter" role="group" aria-label="Show races by faction" x-cloak>
+                <button type="button" :aria-pressed="faction === ''" @click="chooseFaction('')">Both</button>
+                <button type="button" :aria-pressed="faction === 'Alliance'" @click="chooseFaction('Alliance')">Alliance</button>
+                <button type="button" :aria-pressed="faction === 'Horde'" @click="chooseFaction('Horde')">Horde</button>
+              </div>
+            </div>
+            <div class="race-group" x-show="!faction || faction === 'Alliance'">
+              <p class="faction-heading alliance">Alliance <span>Tradition &amp; resolve</span></p>
+              <div class="race-grid">
+                {{range .Races}}{{if eq .Faction "Alliance"}}{{template "race-card" .}}{{end}}{{end}}
+              </div>
+            </div>
+            <div class="race-group" x-show="!faction || faction === 'Horde'">
+              <p class="faction-heading horde">Horde <span>Strength &amp; honor</span></p>
+              <div class="race-grid">
+                {{range .Races}}{{if eq .Faction "Horde"}}{{template "race-card" .}}{{end}}{{end}}
+              </div>
+            </div>
+            <p id="race-help" class="picker-help" x-text="raceHint">Choose a race for lore context, or leave it open.</p>
+          </fieldset>
+
+          <fieldset class="picker class-picker" aria-describedby="class-help">
+            <legend>Class <span class="opt">optional</span></legend>
+            <div class="picker-toolbar">
+              <label class="any-choice">
+                <input type="radio" name="class" value="" x-model="cls" @change="chooseClass('')" checked>
+                <span>Any class</span>
+              </label>
+              <span class="available-count" x-text="classCount" x-cloak></span>
+            </div>
+            <div class="class-grid">
+              {{range .Classes}}
+              <label class="choice-card class-card" :class="{'is-unavailable': !classAllowed('{{.Name}}')}" style="--class-color: {{.Color}}">
+                <input type="radio" id="class-{{.ID}}" name="class" value="{{.Name}}" x-model="cls"
+                       @change="chooseClass($event.target.value)" :disabled="!classAllowed('{{.Name}}')">
+                <span class="choice-content">
+                  <span class="icon-frame" aria-hidden="true"><span>{{slice .Name 0 1}}</span><img class="character-icon" src="{{.Icon}}" alt="" width="40" height="40" decoding="async"></span>
+                  <span class="choice-copy">
+                    <span class="choice-name">{{.Name}}</span>
+                    <span class="choice-detail" x-show="classAllowed('{{.Name}}')">{{.Description}}</span>
+                    <span class="choice-detail unavailable-label" x-show="!classAllowed('{{.Name}}')" x-cloak>Unavailable</span>
+                    <span class="new-combo" x-show="isNewClass('{{.Name}}')" x-cloak>New in Forever</span>
+                  </span>
+                  <span class="choice-check" aria-hidden="true">✓</span>
+                </span>
+              </label>
+              {{end}}
+            </div>
+            <p id="class-help" class="picker-help" x-text="classHint">Pick a race to see its available classes.</p>
+          </fieldset>
+
+          <p class="selection-note" role="status" aria-live="polite" x-text="selectionNote" x-show="selectionNote" x-cloak></p>
+          <div class="submit-area">
+            <p class="ledger-sees">The ledger sees <strong x-text="seen || 'a nameless wanderer'">a nameless wanderer</strong></p>
+            <button type="submit" class="audit-btn">Audit this name <span aria-hidden="true">↗</span></button>
+            <div id="rolling" class="rolling" aria-hidden="true"><span class="loading-mark">✦</span> The ledger is reading your name…</div>
+            <p class="audit-note">For fun. A reading estimates style and policy risk; it does not check availability.</p>
+          </div>
+        </form>
+
+        <details class="roster-note">
+          <summary>About the Forever roster</summary>
+          <p>Based on <a href="https://news.blizzard.com/en-us/article/24304075/create-the-hero-you-want-to-be-in-world-of-warcraft-forever">Blizzard's race and class table</a>. Forever is in beta, with launch scheduled for November 4.</p>
+          <p>Nine races, nine classes. Skyborne choose a faction at character creation: High Order can be Mages; Windshapers can be Shaman. Both can be Warriors, Hunters, Rogues, and Druids. The <a href="https://worldofwarcraft.blizzard.com/en-us/news/24302071">Skyborne race</a> requires an upgrade pack.</p>
+          <p>“New in Forever” marks the new Classic-era combinations. Race and class are optional here; choosing a new race clears a class it cannot play.</p>
+        </details>
+      </section>
+
+      <section id="results" aria-label="Name audit results" aria-busy="false">
+        {{template "idle" .}}
+      </section>
+    </div>
+  </main>
+
+  <template id="connection-error">
+    <article class="panel reading error-card">
+      <p class="eyebrow">A break in the connection</p>
+      <h2 id="reading-title" tabindex="-1">The ledger lost the thread.</h2>
+      <p>Check your connection, then audit this name again.</p>
+      <button type="submit" form="audit-form" class="audit-btn ghost">Try again</button>
+    </article>
+  </template>
+  <noscript><p class="noscript-note">Enable JavaScript to use the visual picker and receive readings on this page.</p></noscript>
+  <footer>
+    <span>Unofficial fan tool. Warcraft artwork and trademarks belong to Blizzard Entertainment.</span>
+    <a href="https://news.blizzard.com/en-us/article/24304161/create-a-name-of-your-own-in-wow-forever">Forever naming guidelines ↗</a>
+  </footer>
+</body>
+</html>{{end}}
+
+{{define "race-card"}}
+<label class="choice-card race-card {{if .Variant}}skyborne-card{{end}}">
+  <input type="radio" id="race-{{.ID}}" name="race" value="{{.Name}}" x-model="race" @change="chooseRace($event.target.value)">
+  <span class="choice-content">
+    <span class="icon-frame" aria-hidden="true"><span>{{slice .Label 0 1}}</span><img class="character-icon {{if .Variant}}portrait{{end}}" src="{{.Icon}}" alt="" width="48" height="48" decoding="async"></span>
+    <span class="choice-name">{{.Label}}</span>
+    <span class="race-variant">{{if .Variant}}{{.Variant}}{{else}}&nbsp;{{end}}</span>
+    {{if .Variant}}<span class="race-new" aria-hidden="true">New</span>{{end}}
+    <span class="choice-check" aria-hidden="true">✓</span>
+  </span>
+</label>
+{{end}}
+
+{{define "idle"}}
+<div class="panel idle">
+  <p class="eyebrow">Your character folio</p>
+  <div class="character-preview">
+    <div class="preview-emblem" aria-hidden="true">
+      <span x-show="!selectedRace">✦</span>
+      <template x-if="selectedRace">
+        <span class="icon-frame preview-portrait"><span x-text="selectedRace.label[0]"></span><img class="character-icon" :class="{'portrait': selectedRace.variant}" :src="selectedRace.icon" alt="" width="80" height="80"></span>
+      </template>
+      <template x-if="selectedClass">
+        <span class="icon-frame preview-class"><span x-text="selectedClass.name[0]"></span><img class="character-icon" :src="selectedClass.icon" alt="" width="32" height="32"></span>
+      </template>
+    </div>
+    <h2 class="preview-name" x-text="fullName || 'Your name goes here'">Your name goes here</h2>
+    <p class="preview-identity" x-text="identity || 'Your race and class are up to you'">Your race and class are up to you</p>
+    <span class="preview-faction" :class="selectedRace?.faction.toLowerCase()" x-text="selectedRace?.faction || ''" x-show="selectedRace" x-cloak></span>
+  </div>
+  <div class="idle-guide">
+    <h3>A name worth remembering?</h3>
+    <p>Give the ledger both names. It will return a grade, a naming style, and six dimensions of character.</p>
+    <dl>
+      <div><dt>Lore &amp; roleplay</dt><dd>Does it belong in Azeroth?</dd></div>
+      <div><dt>Humor &amp; originality</dt><dd>Will anyone remember it?</dd></div>
+      <div><dt>Sound &amp; craft</dt><dd>Does it roll off the tongue?</dd></div>
+    </dl>
+  </div>
+  <p class="folio-footnote">Two names. One identity.<br>A little judgment from Jev.</p>
+</div>
+{{end}}
+
+{{define "results"}}
+<article class="panel reading" style="--accent: {{if .Class.Color}}{{.Class.Color}}{{else}}#bfa164{{end}}">
+  <p class="eyebrow">The ledger has spoken</p>
+  <div class="sheet-top">
+    <div class="crest grade-{{.A.Grade.ID}}" aria-label="Grade {{.A.Grade.ID}}">{{.A.Grade.ID}}</div>
+    <div class="name-block">
+      <h2 id="reading-title" class="full-name" tabindex="-1">{{.A.First}} {{.A.Last}}</h2>
+      <p class="verdict-line"><span class="arch-pill">{{.A.Archetype.Label}}</span></p>
+    </div>
+  </div>
+  {{if or .A.Race .A.Class}}
+  <p class="audited-character">
+    {{if .Race.Icon}}<img class="character-icon {{if .Race.Variant}}portrait{{end}}" src="{{.Race.Icon}}" alt="" width="24" height="24">{{end}}
+    {{if .Class.Icon}}<img class="character-icon" src="{{.Class.Icon}}" alt="" width="24" height="24">{{end}}
+    <span>{{.A.Race}} {{.A.Class}}</span>
+  </p>
+  {{end}}
+
+  <section class="stat-sheet" aria-labelledby="stats-title">
+    <h3 id="stats-title">Stat sheet</h3>
+    {{range .A.Dims}}
+    <div class="stat">
+      <div class="stat-line"><span class="stat-name">{{.Name}}</span><span class="stat-level">{{.Level}}</span></div>
+      <div class="stat-bar" role="meter" aria-label="{{.Name}}" aria-valuemin="0" aria-valuemax="1" aria-valuenow="{{.Score}}" aria-valuetext="{{.Level}} ({{pct .Score}} of rubric span)"><span style="width: {{pct .Score}}"></span></div>
+    </div>
+    {{end}}
+    <p class="stat-note">Bars show a position on each rubric, not a probability.</p>
+  </section>
+
+  <section class="signal-section" aria-labelledby="signals-title">
+    <h3 id="signals-title">Name signals <span>Estimated probabilities</span></h3>
+    <ul class="flags">
+      {{range .A.Flags}}
+      <li class="flag flag-{{.Key}} {{if gt .Yes 0.5}}is-high{{end}}"><span class="flag-name">{{.Name}}</span><span class="flag-val">{{pct .Yes}}</span></li>
+      {{end}}
+    </ul>
+  </section>
+
+  <details class="spread-details">
+    <summary>Explore the grade &amp; style spreads</summary>
+    <div class="dists">
+      <section aria-labelledby="grade-title">
+        <h3 id="grade-title">Grade spread</h3>
+        {{range .A.GradeDist}}
+        <div class="dist-row"><span class="dist-label">{{.Label}}</span><div class="dist-bar" aria-hidden="true"><span style="width: {{pct .Probability}}"></span></div><span class="prob">{{pct .Probability}}</span></div>
+        {{end}}
+      </section>
+      <section aria-labelledby="archetype-title">
+        <h3 id="archetype-title">Archetype spread</h3>
+        {{range .A.ArchDist}}
+        <div class="dist-row"><span class="dist-label">{{.Label}}</span><div class="dist-bar" aria-hidden="true"><span style="width: {{pct .Probability}}"></span></div><span class="prob">{{pct .Probability}}</span></div>
+        {{end}}
+      </section>
+    </div>
+  </details>
+
+  <div class="confidence">
+    <p class="meter-label">Mean model certainty <strong>{{pct .A.Confidence}}</strong></p>
+    <div class="meter" role="meter" aria-label="Mean model certainty" aria-valuemin="0" aria-valuemax="1" aria-valuenow="{{.A.Confidence}}"><span style="width: {{pct .A.Confidence}}"></span></div>
+  </div>
+  <details class="provenance">
+    <summary>How to read this audit</summary>
+    <p>Jev evaluates all questions in one request. Scores are weighted positions on five-level rubrics; the shown label is the most likely level. Grade and style are its chosen options, including tied choices.</p>
+    <p>Mean certainty averages the six score and two choice confidences. It is not the probability this audit is correct. Name signals estimate a yes answer; only Blizzard decides naming-policy enforcement and availability.</p>
+    <dl><div><dt>Model</dt><dd>{{.A.Model}}</dd></div><div><dt>Time</dt><dd>{{.A.LatencyMS}} ms</dd></div><div><dt>Tokens</dt><dd>{{.A.Usage.InputTokens}} in / {{.A.Usage.OutputTokens}} out</dd></div></dl>
+  </details>
+  <button type="submit" form="audit-form" class="audit-btn ghost">Audit again</button>
+</article>
+{{end}}
+
+{{define "error"}}
+<article class="panel reading error-card">
+  <p class="eyebrow">An unfinished reading</p>
+  <h2 id="reading-title" tabindex="-1">The ledger falters</h2>
+  <p>{{.Message}}</p>
+  <button type="submit" form="audit-form" class="audit-btn ghost">Try again</button>
+</article>
+{{end}}

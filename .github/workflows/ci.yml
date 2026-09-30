@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - name: install
+        run: mise install
+      - name: fmt
+        run: test -z "$(gofmt -l .)"
+      - name: lint
+        run: mise run lint
+      - name: test
+        run: mise run test
+      - name: build
+        run: mise run build
+      - name: smoke
+        run: |
+          TYPESAFE_API_KEY= ./nameworthy -addr 127.0.0.1:18099 &
+          pid=$!
+          trap 'kill "$pid"' EXIT
+          curl --fail --silent --show-error --retry 5 --retry-connrefused --retry-delay 1 http://127.0.0.1:18099/health
+          curl -sf http://127.0.0.1:18099/ | grep -q "Is your name worthy?"
+      - name: container build
+        run: docker build -t nameworthy:ci .
+      - name: container smoke
+        run: |
+          docker run --detach --name nameworthy-ci \
+            --read-only --cap-drop=ALL --security-opt=no-new-privileges \
+            -p 127.0.0.1:18100:8080 nameworthy:ci
+          trap 'docker rm --force nameworthy-ci' EXIT
+          curl --fail --silent --show-error --retry 5 --retry-connrefused --retry-delay 1 http://127.0.0.1:18100/health
+          curl -sf http://127.0.0.1:18100/ | grep -q "Is your name worthy?"

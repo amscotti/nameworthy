@@ -1,0 +1,27 @@
+# nameworthy toolchain and tasks — pinned via mise.
+# Run tasks with `mise run <task>` (fmt, lint, test, build, start).
+
+[tools]
+go = "1.27.1"            # core plugin
+golangci-lint = "2.14.0" # lint gate (mise run lint)
+gcloud = "587.0.0"       # Google Cloud SDK (Cloud Run deploys)
+
+[tasks.fmt]
+description = "Format Go sources"
+run = "gofmt -w ."
+
+[tasks.lint]
+description = "Lint gate (golangci-lint)"
+run = "golangci-lint run"
+
+[tasks.test]
+description = "Unit tests with the race detector"
+run = "go test -race ./..."
+
+[tasks.build]
+description = "Build the nameworthy binary"
+run = "go build -o nameworthy ./cmd/nameworthy"
+
+[tasks.start]
+description = "Run nameworthy locally"
+run = "go run ./cmd/nameworthy"

@@ -1,0 +1,16 @@
+# Build artifacts
+/nameworthy
+*.exe
+
+# Secrets
+.env
+
+# golangci-lint
+golangci-lint-report.xml
+
+# Test artifacts
+coverage.out
+coverage.html
+
+# OS metadata
+.DS_Store

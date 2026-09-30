@@ -1,0 +1,23 @@
+# golangci-lint v2 configuration.
+# Docs: https://golangci-lint.run/usage/configuration/
+
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - contextcheck
+    - errcheck
+    - govet
+    - staticcheck
+    - gocritic
+    - ineffassign
+  settings:
+    # contextcheck: blocking work must propagate the caller's context
+    # (the Jev client takes a context and hands it to http.Request).
+    contextcheck:
+      allow-joining-context-in-parallel: true
+
+formatters:
+  enable:
+    - gofmt

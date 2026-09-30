@@ -1,0 +1,17 @@
+# Allow only the Go module and application sources into the build context.
+# This excludes local binaries, credentials, Git history, and development files.
+**
+!go.mod
+!go.sum
+!LICENSE
+!cmd/
+!cmd/**
+!internal/
+!internal/**
+!web/
+!web/**
+
+# Tests are run by the Go test/CI tasks, not shipped in the image build context.
+**/*_test.go
+**/.env
+**/.env.*
